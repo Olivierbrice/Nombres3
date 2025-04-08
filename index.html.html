@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Les suites de nombres</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            text-align: center;
+            background-color: #f0f8ff;
+            padding: 20px;
+        }
+        h1 {
+            color: #ff6b6b;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+        }
+        .number-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px auto;
+            max-width: 800px;
+        }
+        .number {
+            background-color: #74b9ff;
+            color: white;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .number:hover {
+            transform: scale(1.1);
+            background-color: #0984e3;
+        }
+        .instructions {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #2d3436;
+        }
+        .feedback {
+            font-size: 1.8em;
+            margin: 20px 0;
+            min-height: 50px;
+        }
+        .correct {
+            color: #00b894;
+        }
+        .incorrect {
+            color: #d63031;
+        }
+        .next-btn, .restart-btn {
+            background-color: #a29bfe;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.2em;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+            display: none;
+        }
+        .next-btn:hover, .restart-btn:hover {
+            background-color: #6c5ce7;
+            transform: scale(1.05);
+        }
+        .progress {
+            font-size: 1.2em;
+            color: #636e72;
+            margin-bottom: 20px;
+        }
+        .final-score {
+            font-size: 2em;
+            color: #e84393;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Les suites de nombres</h1>
+        <div class="progress" id="progress">Page 1 sur 6</div>
+        <div class="instructions" id="instructions">Trouve le nombre qui ne suit pas la règle !</div>
+        <div class="feedback" id="feedback"></div>
+        <div class="number-container" id="number-container"></div>
+        <button class="next-btn" id="next-btn">Suite suivante</button>
+        <button class="restart-btn" id="restart-btn">Recommencer</button>
+    </div>
+
+    <script>
+        // Variables du jeu
+        let currentPage = 1;
+        let totalPages = 6;
+        let score = 0;
+        let currentSequence = [];
+        let currentIncrement = 0;
+        let wrongNumberIndex = 0;
+
+        // Éléments du DOM
+        const numberContainer = document.getElementById('number-container');
+        const feedbackElement = document.getElementById('feedback');
+        const nextBtn = document.getElementById('next-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const instructionsElement = document.getElementById('instructions');
+        const progressElement = document.getElementById('progress');
+
+        // Fonction pour générer une séquence avec une erreur
+        function generateSequence() {
+            // Choisir un incrément aléatoire pour les pages 2-6
+            if (currentPage === 1) {
+                currentIncrement = 2; // Première page toujours +2
+            } else {
+                const increments = [3, 4, 5, 10];
+                currentIncrement = increments[Math.floor(Math.random() * increments.length)];
+            }
+
+            // Générer un nombre de départ aléatoire entre 20 et (200 - 10*currentIncrement)
+            const startNumber = Math.floor(Math.random() * (180 - 10 * currentIncrement)) + 20;
+            
+            // Générer la séquence correcte
+            currentSequence = [];
+            for (let i = 0; i < 10; i++) {
+                currentSequence.push(startNumber + i * currentIncrement);
+            }
+
+            // Choisir une position aléatoire pour l'erreur (pas le premier nombre)
+            wrongNumberIndex = Math.floor(Math.random() * 9) + 1;
+            
+            // Créer l'erreur en ajoutant ou soustrayant 1-3 au nombre correct
+            const errorAmount = Math.floor(Math.random() * 3) + 1;
+            const shouldAdd = Math.random() > 0.5;
+            
+            if (shouldAdd) {
+                currentSequence[wrongNumberIndex] += errorAmount;
+            } else {
+                currentSequence[wrongNumberIndex] -= errorAmount;
+            }
+        }
+
+        // Fonction pour afficher la séquence
+        function displaySequence() {
+            numberContainer.innerHTML = '';
+            feedbackElement.textContent = '';
+            feedbackElement.className = 'feedback';
+            nextBtn.style.display = 'none';
+            restartBtn.style.display = 'none';
+            
+            progressElement.textContent = `Page ${currentPage} sur ${totalPages}`;
+            
+            if (currentPage === 1) {
+                instructionsElement.textContent = "Trouve le nombre qui ne suit pas la règle ! (Cette fois, on ajoute +2 à chaque nombre)";
+            } else {
+                instructionsElement.textContent = `Trouve le nombre qui ne suit pas la règle ! (Cette fois, on ajoute +${currentIncrement} à chaque nombre)`;
+            }
+
+            currentSequence.forEach((number, index) => {
+                const numberElement = document.createElement('div');
+                numberElement.className = 'number';
+                numberElement.textContent = number;
+                numberElement.dataset.index = index;
+                numberElement.addEventListener('click', handleNumberClick);
+                numberContainer.appendChild(numberElement);
+            });
+        }
+
+        // Gestion du clic sur un nombre
+        function handleNumberClick(event) {
+            const clickedIndex = parseInt(event.target.dataset.index);
+            
+            // Désactiver tous les nombres
+            const numbers = document.querySelectorAll('.number');
+            numbers.forEach(num => {
+                num.style.pointerEvents = 'none';
+            });
+            
+            // Vérifier si c'est la bonne réponse
+            if (clickedIndex === wrongNumberIndex) {
+                event.target.style.backgroundColor = '#00b894';
+                feedbackElement.textContent = `Bravo ! ${currentSequence[wrongNumberIndex]} ne suit pas la règle.`;
+                feedbackElement.className = 'feedback correct';
+                score++;
+            } else {
+                event.target.style.backgroundColor = '#d63031';
+                feedbackElement.textContent = `Oops ! ${currentSequence[clickedIndex]} est correct. L'erreur était ${currentSequence[wrongNumberIndex]}.`;
+                feedbackElement.className = 'feedback incorrect';
+            }
+            
+            // Afficher le bon nombre en vert
+            numbers[wrongNumberIndex].style.backgroundColor = '#00b894';
+            
+            // Afficher le bouton suivant ou le score final
+            if (currentPage < totalPages) {
+                nextBtn.style.display = 'inline-block';
+            } else {
+                showFinalScore();
+            }
+        }
+
+        // Fonction pour passer à la page suivante
+        function nextPage() {
+            currentPage++;
+            generateSequence();
+            displaySequence();
+        }
+
+        // Fonction pour afficher le score final
+        function showFinalScore() {
+            numberContainer.innerHTML = '';
+            instructionsElement.textContent = '';
+            
+            const scorePercentage = Math.round((score / totalPages) * 100);
+            feedbackElement.innerHTML = `
+                <div class="final-score">Ton score: ${score} sur ${totalPages}</div>
+                <div>${getScoreMessage(score, totalPages)}</div>
+            `;
+            
+            restartBtn.style.display = 'inline-block';
+        }
+
+        // Fonction pour obtenir un message en fonction du score
+        function getScoreMessage(score, total) {
+            const percentage = score / total;
+            
+            if (percentage === 1) {
+                return "Parfait ! Tu es un champion des suites de nombres ! 🎉";
+            } else if (percentage >= 0.8) {
+                return "Excellent travail ! Tu as bien compris les suites. 👏";
+            } else if (percentage >= 0.6) {
+                return "Bien joué ! Avec un peu plus de pratique, tu seras parfait. 😊";
+            } else if (percentage >= 0.4) {
+                return "Pas mal ! Continue à t'entraîner pour t'améliorer. 💪";
+            } else {
+                return "Ne t'inquiète pas ! Les suites, c'est difficile au début. Essaie encore ! 👍";
+            }
+        }
+
+        // Fonction pour recommencer le jeu
+        function restartGame() {
+            currentPage = 1;
+            score = 0;
+            generateSequence();
+            displaySequence();
+        }
+
+        // Événements
+        nextBtn.addEventListener('click', nextPage);
+        restartBtn.addEventListener('click', restartGame);
+
+        // Démarrer le jeu
+        generateSequence();
+        displaySequence();
+    </script>
+</body>
+</html>
